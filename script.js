@@ -22,6 +22,8 @@ if (
 }
 let draggedClockTimezone = null;
 let savedEvents = JSON.parse(localStorage.getItem('savedEvents') || '[]');
+let savedTeams = JSON.parse(localStorage.getItem('clockTeams') || '[]');
+let isTeamMode = localStorage.getItem('clockMode') === 'team';
 
 // Emoji map for regions
 const regionEmojis = {
@@ -72,6 +74,252 @@ function labelTimezoneOptions() {
         if (!option.dataset.cityName) option.dataset.cityName = option.textContent.trim();
         option.textContent = `${option.dataset.cityName} (${getUtcOffsetLabel(option.value)})`;
     });
+}
+
+
+function getTimezoneOptionName(timezone) {
+    const option = document.querySelector(`#timezoneSelect option[value="${CSS.escape(timezone)}"]`);
+    return option?.dataset.cityName || option?.textContent?.replace(/\s*\([^)]*\)\s*$/, '') || timezone.split('/').pop().replace('_', ' ');
+}
+
+function saveTeams() {
+    localStorage.setItem('clockTeams', JSON.stringify(savedTeams));
+}
+
+function setTeamMode(enabled) {
+    isTeamMode = enabled;
+    localStorage.setItem('clockMode', enabled ? 'team' : 'standard');
+    document.body.classList.toggle('team-mode-active', enabled);
+    document.getElementById('teamSidebar')?.classList.toggle('expanded', enabled);
+    renderTeamModePanel();
+}
+
+function getTeamClockRows() {
+    return Array.from(document.querySelectorAll('.team-clock-row')).map(row => {
+        const timezone = row.querySelector('.team-timezone-select')?.value || '';
+        const customLabel = row.querySelector('.team-clock-label')?.value.trim() || '';
+        const fallbackName = getTimezoneOptionName(timezone);
+        return {
+            timezone,
+            name: customLabel || fallbackName,
+            customLabel: Boolean(customLabel),
+            favorite: false
+        };
+    }).filter(clock => clock.timezone);
+}
+
+function createTeamClockRow(clock = {}) {
+    const row = document.createElement('div');
+    row.className = 'team-clock-row';
+
+    const select = document.createElement('select');
+    select.className = 'team-timezone-select';
+    select.innerHTML = document.getElementById('timezoneSelect').innerHTML;
+    select.value = clock.timezone || '';
+    select.setAttribute('aria-label', 'Team clock timezone');
+
+    const label = document.createElement('input');
+    label.className = 'team-clock-label';
+    label.type = 'text';
+    label.placeholder = 'Custom label';
+    label.value = clock.customLabel ? clock.name : '';
+    label.setAttribute('aria-label', 'Team clock custom label');
+
+    const remove = document.createElement('button');
+    remove.className = 'btn-icon team-row-remove';
+    remove.type = 'button';
+    remove.title = 'Remove from team';
+    remove.innerHTML = '<i class="fas fa-times"></i>';
+    remove.addEventListener('click', () => row.remove());
+
+    row.append(select, label, remove);
+    return row;
+}
+
+function addTeamClockRow(clock = {}) {
+    const list = document.getElementById('teamClockList');
+    if (!list) return;
+    list.appendChild(createTeamClockRow(clock));
+}
+
+function showTeamPanelSection(section) {
+    const selectedView = document.querySelector(`.team-panel-view[data-team-view="${section}"]`);
+    const shouldHideSelected = selectedView && !selectedView.hidden;
+
+    document.querySelectorAll('.team-panel-view').forEach(view => {
+        view.hidden = shouldHideSelected || view.dataset.teamView !== section;
+    });
+    document.querySelectorAll('.team-action-btn').forEach(button => {
+        button.classList.toggle('active', !shouldHideSelected && button.dataset.teamAction === section);
+    });
+
+    if (!shouldHideSelected && section === 'create' && !document.querySelector('#teamClockList .team-clock-row')) {
+        addTeamClockRow();
+    }
+}
+
+function loadTeam(teamId) {
+    const team = savedTeams.find(item => item.id === teamId);
+    if (!team) {
+        alert('Please select a saved team');
+        return;
+    }
+
+    activeClocks = team.clocks.map(clock => ({
+        timezone: clock.timezone,
+        name: clock.name || getTimezoneOptionName(clock.timezone),
+        customLabel: Boolean(clock.customLabel),
+        favorite: false
+    }));
+    saveClockPreferences();
+    renderClockCards();
+}
+
+function populateModifyTeam(teamId) {
+    const team = savedTeams.find(item => item.id === teamId);
+    const nameInput = document.getElementById('modifyTeamName');
+    const list = document.getElementById('modifyTeamClockList');
+    if (!team || !nameInput || !list) return;
+
+    nameInput.value = team.name;
+    list.innerHTML = '';
+    team.clocks.forEach(clock => list.appendChild(createTeamClockRow(clock)));
+}
+
+function handleUpdateTeam() {
+    const teamId = document.getElementById('modifyTeamSelect')?.value;
+    const team = savedTeams.find(item => item.id === teamId);
+    if (!team) {
+        alert('Please select a team to modify');
+        return;
+    }
+
+    const name = document.getElementById('modifyTeamName')?.value.trim();
+    const list = document.getElementById('modifyTeamClockList');
+    const clocks = Array.from(list?.querySelectorAll('.team-clock-row') || []).map(row => {
+        const timezone = row.querySelector('.team-timezone-select')?.value || '';
+        const customLabel = row.querySelector('.team-clock-label')?.value.trim() || '';
+        return {
+            timezone,
+            name: customLabel || getTimezoneOptionName(timezone),
+            customLabel: Boolean(customLabel),
+            favorite: false
+        };
+    }).filter(clock => clock.timezone);
+
+    if (!name || !clocks.length) {
+        alert('A team needs a name and at least one clock');
+        return;
+    }
+
+    team.name = name;
+    team.clocks = clocks;
+    saveTeams();
+    loadTeam(team.id);
+    renderTeamModePanel();
+    showTeamPanelSection('modify');
+}
+
+function handleSaveTeam() {
+    const nameInput = document.getElementById('teamName');
+    const name = nameInput?.value.trim();
+    if (!name) {
+        alert('Please give your team a name');
+        return;
+    }
+
+    const clocks = getTeamClockRows();
+    if (!clocks.length) {
+        alert('Add at least one clock to the team');
+        return;
+    }
+
+    const seen = new Set();
+    const uniqueClocks = [];
+    for (const clock of clocks) {
+        if (seen.has(clock.timezone)) continue;
+        seen.add(clock.timezone);
+        uniqueClocks.push(clock);
+    }
+
+    const team = {
+        id: `team-${Date.now()}`,
+        name,
+        clocks: uniqueClocks
+    };
+
+    savedTeams = [team, ...savedTeams.filter(item => item.name.toLowerCase() !== name.toLowerCase())];
+    saveTeams();
+    loadTeam(team.id);
+    renderTeamModePanel();
+}
+
+function renderTeamModePanel() {
+    const panel = document.getElementById('teamModePanel');
+    const toggle = document.getElementById('teamModeToggle');
+    if (!panel || !toggle) return;
+
+    panel.hidden = !isTeamMode;
+    toggle.classList.toggle('active', isTeamMode);
+    toggle.setAttribute('aria-expanded', String(isTeamMode));
+    if (!isTeamMode) {
+        panel.innerHTML = '';
+        return;
+    }
+
+    const options = savedTeams.map(team => `<option value="${team.id}">${team.name} (${team.clocks.length})</option>`).join('');
+
+    panel.innerHTML = `
+        <div class="team-sidebar-header">
+            <span class="eyebrow">Team</span>
+            <h3>Team clocks</h3>
+            <p>Create, load, or modify saved groups of clocks.</p>
+        </div>
+        <div class="team-actions">
+            <button class="team-action-btn" data-team-action="create" type="button"><i class="fas fa-plus-circle"></i> Create Team</button>
+            <button class="team-action-btn" data-team-action="load" type="button"><i class="fas fa-folder-open"></i> Load Team</button>
+            <button class="team-action-btn" data-team-action="modify" type="button"><i class="fas fa-pen"></i> Modify Team</button>
+        </div>
+
+        <section class="team-panel-view" data-team-view="create" hidden>
+            <label>Team name<input type="text" id="teamName" placeholder="E.g., Design Team, Asia Ops"></label>
+            <div class="team-builder-title">Team clocks</div>
+            <div class="team-clock-list" id="teamClockList"></div>
+            <div class="team-builder-actions">
+                <button class="theme-toggle" id="addTeamClockBtn" type="button"><i class="fas fa-plus"></i> Add Clock</button>
+                <button class="btn" id="saveTeamBtn" type="button"><i class="fas fa-check"></i> Create</button>
+            </div>
+        </section>
+
+        <section class="team-panel-view" data-team-view="load" hidden>
+            <label>Load existing team<select id="teamSelect"><option value="">Choose a team...</option>${options}</select></label>
+            <button class="btn team-full-btn" id="loadTeamBtn" type="button"><i class="fas fa-folder-open"></i> Load Team</button>
+        </section>
+
+        <section class="team-panel-view" data-team-view="modify" hidden>
+            <label>Team to modify<select id="modifyTeamSelect"><option value="">Choose a team...</option>${options}</select></label>
+            <label>Team name<input type="text" id="modifyTeamName" placeholder="Select a team first"></label>
+            <div class="team-builder-title">Team clocks</div>
+            <div class="team-clock-list" id="modifyTeamClockList"></div>
+            <div class="team-builder-actions">
+                <button class="theme-toggle" id="addModifyTeamClockBtn" type="button"><i class="fas fa-plus"></i> Add Clock</button>
+                <button class="btn" id="updateTeamBtn" type="button"><i class="fas fa-save"></i> Save Changes</button>
+            </div>
+        </section>
+    `;
+
+    panel.querySelectorAll('.team-action-btn').forEach(button => {
+        button.addEventListener('click', () => showTeamPanelSection(button.dataset.teamAction));
+    });
+    panel.querySelector('#loadTeamBtn').addEventListener('click', () => loadTeam(panel.querySelector('#teamSelect').value));
+    panel.querySelector('#addTeamClockBtn').addEventListener('click', () => addTeamClockRow());
+    panel.querySelector('#saveTeamBtn').addEventListener('click', handleSaveTeam);
+    panel.querySelector('#modifyTeamSelect').addEventListener('change', event => populateModifyTeam(event.target.value));
+    panel.querySelector('#addModifyTeamClockBtn').addEventListener('click', () => {
+        const list = document.getElementById('modifyTeamClockList');
+        if (list) list.appendChild(createTeamClockRow());
+    });
+    panel.querySelector('#updateTeamBtn').addEventListener('click', handleUpdateTeam);
 }
 
 function getCountryFromTimezone(timezone) {
@@ -854,6 +1102,25 @@ function handleSimplePickerStep(event) {
     if (action === 'time-period') updateEventTimeInput(date => date.setHours(date.getHours() + 12));
 }
 
+
+function setEventSectionCollapsed(collapsed) {
+    const planner = document.getElementById('eventPlanner');
+    const toggle = document.getElementById('eventToggle');
+    if (!planner || !toggle) return;
+
+    planner.classList.toggle('collapsed', collapsed);
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+    toggle.innerHTML = collapsed
+        ? '<i class="fas fa-chevron-down"></i><span>Show</span>'
+        : '<i class="fas fa-chevron-up"></i><span>Hide</span>';
+    localStorage.setItem('eventSectionCollapsed', String(collapsed));
+}
+
+function handleEventToggle() {
+    const planner = document.getElementById('eventPlanner');
+    setEventSectionCollapsed(!planner?.classList.contains('collapsed'));
+}
+
 function initializeEventPlanner() {
     const dateInput = document.getElementById('eventDate');
     const timeInput = document.getElementById('eventTime');
@@ -866,6 +1133,8 @@ function initializeEventPlanner() {
     renderSimpleEventPickers();
     form.addEventListener('click', handleSimplePickerStep);
     form.addEventListener('submit', handleAddEvent);
+    document.getElementById('eventToggle')?.addEventListener('click', handleEventToggle);
+    setEventSectionCollapsed(localStorage.getItem('eventSectionCollapsed') === 'true');
     renderSavedEvents();
 }
 
@@ -1223,6 +1492,8 @@ function initializeApp() {
     // Add event listeners
     document.getElementById('addClockBtn').addEventListener('click', handleAddClock);
     document.getElementById('themeToggle').addEventListener('click', handleThemeToggle);
+    document.getElementById('teamModeToggle').addEventListener('click', () => setTeamMode(!isTeamMode));
+    setTeamMode(isTeamMode);
 
     // Save preferences when closing/reloading
     window.addEventListener('beforeunload', saveClockPreferences);

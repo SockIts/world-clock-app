@@ -4,12 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>World Clock Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=20260610-1848">
+    <link rel="stylesheet" href="style.css?v=20260610-1947">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
+    <aside class="team-sidebar" id="teamSidebar" aria-label="Team tools">
+        <button id="teamModeToggle" class="team-sidebar-tab" type="button" aria-expanded="false" aria-controls="teamModePanel">
+            <i class="fas fa-users"></i>
+            <span>Team</span>
+        </button>
+        <div class="team-mode-panel" id="teamModePanel" hidden></div>
+    </aside>
     <div class="container">
         <div class="background-pattern"></div>
         <div class="content">
@@ -73,10 +80,12 @@
                     </button>
                 </div>
             </div>
+                <div class="header-actions">
                 <button id="themeToggle" class="theme-toggle">
                     <i class="fas fa-moon"></i>
                     <span>Dark Mode</span>
                 </button>
+                </div>
             </header>
             
             <div class="clocks" id="clocksContainer">
@@ -102,9 +111,15 @@
                         <span class="eyebrow">Event</span>
                         <h2>Plan across time zones</h2>
                     </div>
-                    <p>Add a meeting time and compare it against your saved clocks.</p>
+                    <div class="event-header-actions">
+                        <p>Add a meeting time and compare it against your saved clocks.</p>
+                        <button id="eventToggle" class="theme-toggle event-toggle" type="button" aria-expanded="true" aria-controls="eventLayout">
+                            <i class="fas fa-chevron-up"></i>
+                            <span>Hide</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="event-layout">
+                <div class="event-layout" id="eventLayout">
                     <form class="event-form" id="eventForm">
                         <label>
                             Event name
@@ -189,6 +204,6 @@
             </footer>
         </div>
     </div>
-    <script src="script.js?v=20260610-1848"></script>
+    <script src="script.js?v=20260610-1947"></script>
 </body>
 </html>
