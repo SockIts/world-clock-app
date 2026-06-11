@@ -8,7 +8,18 @@ let activeClocks = [
 
 let use24HourClock = localStorage.getItem('use24HourClock') !== 'false';
 let selectedConverterIndex = Number(localStorage.getItem('selectedConverterIndex') || 8);
-let selectedConverterDate = localStorage.getItem('selectedConverterDate') || new Date().toISOString().slice(0, 10);
+let selectedConverterDate = localStorage.getItem('selectedConverterDate') || getDateKey(new Date());
+const localTodayKey = getDateKey(new Date());
+const legacyUtcTodayKey = new Date().toISOString().slice(0, 10);
+if (
+    !localStorage.getItem('convertedLocalTimeReference')
+    && selectedConverterDate === legacyUtcTodayKey
+    && selectedConverterDate !== localTodayKey
+) {
+    selectedConverterDate = localTodayKey;
+    localStorage.setItem('selectedConverterDate', selectedConverterDate);
+    localStorage.setItem('convertedLocalTimeReference', 'true');
+}
 let draggedClockTimezone = null;
 let savedEvents = JSON.parse(localStorage.getItem('savedEvents') || '[]');
 
@@ -101,6 +112,18 @@ function getCountryFromTimezone(timezone) {
 
 function sortActiveClocks() {
     activeClocks.sort((a, b) => Number(Boolean(b.favorite)) - Number(Boolean(a.favorite)));
+}
+
+function normalizeSingleFavorite() {
+    let favoriteFound = false;
+    activeClocks.forEach(clock => {
+        if (!clock.favorite) return;
+        if (favoriteFound) {
+            clock.favorite = false;
+            return;
+        }
+        favoriteFound = true;
+    });
 }
 
 function renderClockCards() {
@@ -312,7 +335,11 @@ function createClockElement(timezone, cityName, options = {}) {
     favoriteBtn.addEventListener('click', () => {
         const clock = activeClocks.find(item => item.timezone === timezone);
         if (!clock) return;
-        clock.favorite = !clock.favorite;
+        const shouldFavorite = !clock.favorite;
+        activeClocks.forEach(item => {
+            item.favorite = false;
+        });
+        clock.favorite = shouldFavorite;
         saveClockPreferences();
         renderClockCards();
     });
@@ -480,7 +507,10 @@ function renderConverterNotes(dayStart, nowIndex) {
 }
 
 function getDateKey(date) {
-    return date.toISOString().slice(0, 10);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function getZonedDateKey(timezone, date) {
@@ -1149,6 +1179,7 @@ function handleThemeToggle() {
 
 // Save clock preferences to localStorage
 function saveClockPreferences() {
+    normalizeSingleFavorite();
     localStorage.setItem('activeClocks', JSON.stringify(activeClocks));
     localStorage.setItem('theme', document.body.classList.contains('dark-theme'));
 }
@@ -1160,6 +1191,7 @@ function loadClockPreferences() {
 
     if (savedClocks) {
         activeClocks = JSON.parse(savedClocks);
+        normalizeSingleFavorite();
     }
 
     if (savedTheme === 'true') {
