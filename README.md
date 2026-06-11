@@ -17,6 +17,10 @@ A **World Clock Application** that displays the current time in multiple timezon
 ![Screenshot of the World Clock App](images/screenshot.png)
 *Adding a new clock with the timezone selector.*
 
+## 🌐 Live Demo
+
+Published at: https://sockits.github.io/world-clock-app/
+
 ## 🚀 How to Use
 
 1. **View Clocks**: The application displays clocks for predefined timezones (e.g., New York, London, Tokyo, Sydney).
@@ -38,7 +42,7 @@ A **World Clock Application** that displays the current time in multiple timezon
 
 1. **Clone the Repository**:
 ```bash
-git clone https://github.com/NickiMash17/world-clock-app.git
+git clone https://github.com/SockIts/world-clock-app.git
 cd world-clock-app
 ```
 
@@ -58,7 +62,7 @@ cd world-clock-app
 ## 📁 Code Structure
 
 * `index.html`: Main HTML file.
-* `styles.css`: Styles for the application.
+* `style.css`: Styles for the application.
 * `script.js`: JavaScript code for clocks, map, and interactivity.
 * `images/`: Folder for map images or other assets.
 

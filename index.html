@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>World Clock Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260610-0410">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -13,18 +13,7 @@
     <div class="container">
         <div class="background-pattern"></div>
         <div class="content">
-            <header>
-                <h1><i class="fas fa-globe-americas"></i> World Clock Dashboard</h1>
-                <button id="themeToggle" class="theme-toggle">
-                    <i class="fas fa-moon"></i>
-                    <span>Dark Mode</span>
-                </button>
-            </header>
-            
-            <div class="clocks" id="clocksContainer">
-             
-            </div>
-            
+            <header class="top-controls">
             <div class="add-clock-section">
                 <h2 class="section-title">Add New Clock</h2>
                 <div class="add-clock-form">
@@ -84,34 +73,122 @@
                     </button>
                 </div>
             </div>
+                <button id="themeToggle" class="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                    <span>Dark Mode</span>
+                </button>
+            </header>
+            
+            <div class="clocks" id="clocksContainer">
+             
+            </div>
             
             <div class="world-map" id="world-map" style="height: 500px; border-radius: 10px;"></div>
+
+            <section class="time-converter" id="timeConverter" aria-label="Time converter">
+                <div class="converter-toolbar">
+                    <div class="converter-title">
+                        <i class="fas fa-calendar-days"></i>
+                        <span>Time Converter</span>
+                    </div>
+                    <div class="converter-range" id="converterRange"></div>
+                </div>
+                <div class="converter-grid" id="converterGrid"></div>
+            </section>
+
+            <section class="event-planner" id="eventPlanner" aria-label="Event planner">
+                <div class="event-header">
+                    <div>
+                        <span class="eyebrow">Event</span>
+                        <h2>Plan across time zones</h2>
+                    </div>
+                    <p>Add a meeting time and compare it against your saved clocks.</p>
+                </div>
+                <div class="event-layout">
+                    <form class="event-form" id="eventForm">
+                        <label>
+                            Event name
+                            <input type="text" id="eventName" value="Meeting" placeholder="Meeting, launch, call...">
+                        </label>
+                        <label>
+                            Host location
+                            <select id="eventTimezone"></select>
+                        </label>
+                        <div class="event-form-row">
+                            <div class="event-picker-field">
+                                <span>Date</span>
+                                <input type="hidden" id="eventDate">
+                                <div class="simple-picker date-picker" aria-label="Event date picker">
+                                    <div class="picker-column">
+                                        <button type="button" data-event-step="date-day" data-step="1">⌃</button>
+                                        <strong id="eventDayDisplay">10</strong>
+                                        <button type="button" data-event-step="date-day" data-step="-1">⌄</button>
+                                    </div>
+                                    <em>·</em>
+                                    <div class="picker-column">
+                                        <button type="button" data-event-step="date-month" data-step="1">⌃</button>
+                                        <strong id="eventMonthDisplay">Jun</strong>
+                                        <button type="button" data-event-step="date-month" data-step="-1">⌄</button>
+                                    </div>
+                                    <em>·</em>
+                                    <div class="picker-column weekday-column">
+                                        <button type="button" data-event-step="date-day" data-step="7">⌃</button>
+                                        <strong id="eventWeekdayDisplay">Wed</strong>
+                                        <button type="button" data-event-step="date-day" data-step="-7">⌄</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="event-picker-field">
+                                <span>Start time</span>
+                                <input type="hidden" id="eventTime" value="12:00">
+                                <div class="simple-picker time-picker" aria-label="Event start time picker">
+                                    <div class="picker-column">
+                                        <button type="button" data-event-step="time-hour" data-step="1">⌃</button>
+                                        <strong id="eventHourDisplay">12</strong>
+                                        <button type="button" data-event-step="time-hour" data-step="-1">⌄</button>
+                                    </div>
+                                    <em>:</em>
+                                    <div class="picker-column">
+                                        <button type="button" data-event-step="time-minute" data-step="15">⌃</button>
+                                        <strong id="eventMinuteDisplay">00</strong>
+                                        <button type="button" data-event-step="time-minute" data-step="-15">⌄</button>
+                                    </div>
+                                    <div class="picker-column period-column">
+                                        <button type="button" data-event-step="time-period" data-step="1">⌃</button>
+                                        <strong id="eventPeriodDisplay">PM</strong>
+                                        <button type="button" data-event-step="time-period" data-step="-1">⌄</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <label>
+                                Duration
+                                <select id="eventDuration">
+                                    <option value="30">30 min</option>
+                                    <option value="60" selected>1 hour</option>
+                                    <option value="90">1.5 hours</option>
+                                    <option value="120">2 hours</option>
+                                    <option value="180">3 hours</option>
+                                </select>
+                            </label>
+                        </div>
+                        <button class="btn event-add-btn" type="submit">
+                            <i class="fas fa-plus-circle"></i> Add Event
+                        </button>
+                    </form>
+                    <div class="event-output">
+                        <div class="event-cards" id="eventCards"></div>
+                    </div>
+                </div>
+            </section>
             
             
             <footer>
-                <div>
-                    World Clock Dashboard | <span id="version">v2.0</span> | Developed by Nicolette Mashaba
-                </div>
-                <div class="social-links">
-                    <a href="https://twitter.com/m_neyi" target="_blank" title="Twitter">
-                        <i class="fab fa-twitter"></i>
-                    </a>
-                    <a href="https://github.com/NickiMash17" target="_blank" title="GitHub">
-                        <i class="fab fa-github"></i>
-                    </a>
-                    <a href="https://linkedin.com/in/nicolette-mashaba-b094a5221/" target="_blank" title="LinkedIn">
-                        <i class="fab fa-linkedin"></i>
-                    </a>
-                    <a href="https://instagram.com/reney_717" target="_blank" title="Instagram">
-                        <i class="fab fa-instagram"></i>
-                    </a>
-                </div>
                 <div class="current-time">
                     Local time: <span id="localTime"></span>
                 </div>
             </footer>
         </div>
     </div>
-    <script src="script.js"></script>
+    <script src="script.js?v=20260610-0410"></script>
 </body>
 </html>
