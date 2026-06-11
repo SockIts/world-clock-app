@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>World Clock Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=20260610-2101">
+    <link rel="stylesheet" href="style.css?v=20260610-2140">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -16,6 +16,25 @@
             <span>Team</span>
         </button>
         <div class="team-mode-panel" id="teamModePanel" hidden></div>
+    </aside>
+    <aside class="comic-sidebar" id="comicSidebar" aria-label="Daily comic">
+        <button id="comicToggle" class="team-sidebar-tab comic-sidebar-tab" type="button" aria-expanded="false" aria-controls="comicPanel">
+            <i class="fas fa-image"></i>
+            <span>Comic</span>
+        </button>
+        <div class="comic-panel" id="comicPanel" hidden>
+            <div class="comic-sidebar-header">
+                <span class="eyebrow">Daily Comic</span>
+                <h3>Comic break</h3>
+                <p>Load today’s comic or roll a random one.</p>
+            </div>
+            <div id="comicContent" class="comic-content">
+                <p class="comic-loading">Loading comic...</p>
+            </div>
+            <button class="btn comic-random-btn" id="comicRandomBtn" type="button">
+                <i class="fas fa-shuffle"></i> Random Comic
+            </button>
+        </div>
     </aside>
     <div class="container">
         <div class="background-pattern"></div>
@@ -41,6 +60,7 @@
                                 <option value="Europe/London">London</option>
                                 <option value="Europe/Paris">Paris</option>
                                 <option value="Europe/Berlin">Berlin</option>
+                                <option value="Europe/Vienna">Vienna</option>
                                 <option value="Europe/Rome">Rome</option>
                                 <option value="Europe/Madrid">Madrid</option>
                                 <option value="Europe/Moscow">Moscow</option>
@@ -204,6 +224,10 @@
             </footer>
         </div>
     </div>
-    <script src="script.js?v=20260610-2101"></script>
+    <div class="comic-modal" id="comicModal" hidden>
+        <button class="comic-modal-close" id="comicModalClose" type="button" aria-label="Close comic">&times;</button>
+        <img class="comic-modal-img" id="comicModalImg" src="" alt="Expanded comic">
+    </div>
+    <script src="script.js?v=20260610-2140"></script>
 </body>
 </html>

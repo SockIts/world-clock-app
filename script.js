@@ -24,6 +24,8 @@ let draggedClockTimezone = null;
 let savedEvents = JSON.parse(localStorage.getItem('savedEvents') || '[]');
 let savedTeams = JSON.parse(localStorage.getItem('clockTeams') || '[]');
 let isTeamMode = localStorage.getItem('clockMode') === 'team';
+let isComicMode = localStorage.getItem('comicMode') === 'open';
+let latestComicNumber = null;
 
 // Emoji map for regions
 const regionEmojis = {
@@ -87,6 +89,9 @@ function saveTeams() {
 }
 
 function setTeamMode(enabled) {
+    if (enabled && isComicMode) {
+        setComicMode(false);
+    }
     isTeamMode = enabled;
     localStorage.setItem('clockMode', enabled ? 'team' : 'standard');
     document.body.classList.toggle('team-mode-active', enabled);
@@ -254,6 +259,88 @@ function handleSaveTeam() {
     renderTeamModePanel();
 }
 
+
+function setComicMode(enabled) {
+    if (enabled && isTeamMode) {
+        setTeamMode(false);
+    }
+    isComicMode = enabled;
+    localStorage.setItem('comicMode', enabled ? 'open' : 'closed');
+    document.getElementById('comicSidebar')?.classList.toggle('expanded', enabled);
+    const panel = document.getElementById('comicPanel');
+    const toggle = document.getElementById('comicToggle');
+    if (panel) panel.hidden = !enabled;
+    if (toggle) {
+        toggle.classList.toggle('active', enabled);
+        toggle.setAttribute('aria-expanded', String(enabled));
+    }
+    if (enabled && !document.querySelector('#comicContent .comic-img')) {
+        loadDailyComic();
+    }
+}
+
+async function fetchComic(num = 'latest') {
+    const response = await fetch(`https://getxkcd.vercel.app/api/comic?num=${num}`);
+    if (!response.ok) throw new Error('Comic request failed');
+    return response.json();
+}
+
+function renderComic(comic) {
+    const content = document.getElementById('comicContent');
+    if (!content) return;
+    content.innerHTML = `
+        <div class="comic-title">${comic.safe_title || comic.title || 'Daily Comic'}</div>
+        <img src="${comic.img}" alt="${comic.alt || ''}" class="comic-img" id="comicImg" title="${comic.alt || ''}">
+        <div class="comic-alt">${comic.alt || ''}</div>
+    `;
+    document.getElementById('comicImg')?.addEventListener('click', () => openComicModal(comic.img, comic.alt || comic.safe_title || 'Comic'));
+}
+
+async function loadDailyComic() {
+    const content = document.getElementById('comicContent');
+    if (content) content.innerHTML = '<p class="comic-loading">Loading comic...</p>';
+    try {
+        const comic = await fetchComic('latest');
+        latestComicNumber = comic.num;
+        renderComic(comic);
+    } catch (error) {
+        if (content) content.innerHTML = '<p class="comic-loading">Failed to load comic 😅<br>Try again.</p>';
+    }
+}
+
+async function loadRandomComic() {
+    const content = document.getElementById('comicContent');
+    if (content) content.innerHTML = '<p class="comic-loading">Loading random comic...</p>';
+    try {
+        if (!latestComicNumber) {
+            const latest = await fetchComic('latest');
+            latestComicNumber = latest.num;
+        }
+        const randomNum = Math.floor(Math.random() * latestComicNumber) + 1;
+        const comic = await fetchComic(randomNum);
+        renderComic(comic);
+    } catch (error) {
+        if (content) content.innerHTML = '<p class="comic-loading">Failed to load comic 😅<br>Try again.</p>';
+    }
+}
+
+function openComicModal(src, alt) {
+    const modal = document.getElementById('comicModal');
+    const image = document.getElementById('comicModalImg');
+    if (!modal || !image) return;
+    image.src = src;
+    image.alt = alt;
+    modal.hidden = false;
+    modal.classList.add('active');
+}
+
+function closeComicModal() {
+    const modal = document.getElementById('comicModal');
+    if (!modal) return;
+    modal.hidden = true;
+    modal.classList.remove('active');
+}
+
 function renderTeamModePanel() {
     const panel = document.getElementById('teamModePanel');
     const toggle = document.getElementById('teamModeToggle');
@@ -334,6 +421,7 @@ function getCountryFromTimezone(timezone) {
         'Europe/London': 'United Kingdom',
         'Europe/Paris': 'France',
         'Europe/Berlin': 'Germany',
+        'Europe/Vienna': 'Austria',
         'Europe/Rome': 'Italy',
         'Europe/Madrid': 'Spain',
         'Europe/Moscow': 'Russia',
@@ -1288,6 +1376,7 @@ const timezoneCoordinates = {
         'Europe/London': { lat: 51.5074, lng: -0.1278 },
         'Europe/Paris': { lat: 48.8566, lng: 2.3522 },
         'Europe/Berlin': { lat: 52.5200, lng: 13.4050 },
+        'Europe/Vienna': { lat: 48.2082, lng: 16.3738 },
         'Europe/Rome': { lat: 41.9028, lng: 12.4964 },
         'Europe/Madrid': { lat: 40.4168, lng: -3.7038 },
         'Europe/Moscow': { lat: 55.7558, lng: 37.6173 },
@@ -1469,7 +1558,14 @@ function initializeApp() {
     document.getElementById('addClockBtn').addEventListener('click', handleAddClock);
     document.getElementById('themeToggle').addEventListener('click', handleThemeToggle);
     document.getElementById('teamModeToggle').addEventListener('click', () => setTeamMode(!isTeamMode));
+    document.getElementById('comicToggle')?.addEventListener('click', () => setComicMode(!isComicMode));
+    document.getElementById('comicRandomBtn')?.addEventListener('click', loadRandomComic);
+    document.getElementById('comicModalClose')?.addEventListener('click', closeComicModal);
+    document.getElementById('comicModal')?.addEventListener('click', event => {
+        if (event.target.id === 'comicModal') closeComicModal();
+    });
     setTeamMode(isTeamMode);
+    setComicMode(isComicMode);
 
     // Save preferences when closing/reloading
     window.addEventListener('beforeunload', saveClockPreferences);
