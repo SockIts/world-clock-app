@@ -2974,10 +2974,41 @@ select,
 
 .converter-grid,
 .converter-row,
+.converter-day-header,
 .converter-note-row {
     width: auto !important;
     min-width: 0 !important;
     background: var(--panel-bg) !important;
+}
+
+.converter-day-header {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr) !important;
+    min-height: 34px;
+    border-bottom: 1.5px solid var(--panel-border) !important;
+}
+
+.converter-day-spacer {
+    display: flex;
+    align-items: center;
+    padding-left: 14px;
+    border-right: 1.5px solid var(--panel-border) !important;
+    background: #f7f5ef;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.converter-day-track {
+    display: grid;
+    place-items: center;
+    background: #ede6da;
+    color: #171717;
+    font-size: 12px;
+    font-weight: 850;
+    letter-spacing: .02em;
 }
 
 .converter-row {
@@ -2997,8 +3028,31 @@ select,
 }
 
 .converter-hour {
+    position: relative;
     min-width: 0;
     border-left: 1px solid rgba(17,17,17,.08) !important;
+}
+
+.converter-hour.day-break {
+    border-left: 3px solid #111 !important;
+    box-shadow: -1px 0 0 rgba(255,255,255,.65) inset;
+}
+
+.converter-midnight-label {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    right: 3px;
+    overflow: hidden;
+    color: currentColor;
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: .04em;
+    line-height: 1;
+    opacity: .78;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .converter-hour.day {
@@ -3017,12 +3071,14 @@ select,
 }
 
 .converter-current-marker {
+    top: 34px !important;
     left: calc(210px + (100% - 210px) / 24 * var(--current-index)) !important;
     width: calc((100% - 210px) / 24) !important;
     background: rgba(246, 173, 85, .22) !important;
 }
 
 .converter-event-marker {
+    top: 34px !important;
     left: calc(210px + (100% - 210px) / 24 * var(--event-index)) !important;
     width: calc((100% - 210px) / 24 * var(--event-width)) !important;
     background: rgba(136, 171, 201, .28) !important;
@@ -3131,11 +3187,21 @@ body.dark-theme .converter-range,
 body.dark-theme .calendar-icon,
 body.dark-theme .calendar-day,
 body.dark-theme .converter-city,
+body.dark-theme .converter-day-spacer,
 body.dark-theme .converter-note-spacer,
 body.dark-theme .event-header,
 body.dark-theme .event-card-main {
     background: var(--panel-bg-soft) !important;
     color: #f8fafc !important;
+}
+
+body.dark-theme .converter-day-track {
+    background: #1f2a36 !important;
+    color: #f8fafc !important;
+}
+
+body.dark-theme .converter-hour.day-break {
+    border-left-color: #f8fafc !important;
 }
 
 body.dark-theme .event-header h2,
@@ -3165,6 +3231,7 @@ body.dark-theme .simple-picker em {
 
 @media (max-width: 959px) {
     .converter-row,
+    .converter-day-header,
     .converter-note-row {
         grid-template-columns: 170px minmax(700px, 1fr) !important;
         min-width: 870px !important;

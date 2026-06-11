@@ -483,6 +483,37 @@ function getDateKey(date) {
     return date.toISOString().slice(0, 10);
 }
 
+function getZonedDateKey(timezone, date) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(date).reduce((acc, part) => {
+        acc[part.type] = part.value;
+        return acc;
+    }, {});
+
+    return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function formatConverterDayLabel(date, options = {}) {
+    return new Intl.DateTimeFormat('en-US', {
+        weekday: options.short ? 'short' : 'long',
+        month: 'short',
+        day: 'numeric'
+    }).format(date);
+}
+
+function formatZonedDayLabel(timezone, date) {
+    return new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+    }).format(date);
+}
+
 function getConverterSelectedDate() {
     const [year, month, day] = selectedConverterDate.split('-').map(Number);
     return new Date(year, month - 1, day, 12, 0, 0);
@@ -529,7 +560,16 @@ function renderTimeConverter() {
     grid.style.setProperty('--current-index', Math.max(nowIndex, 0));
     grid.classList.toggle('has-current-time', nowIndex >= 0);
     const currentMarker = nowIndex >= 0 ? '<div class="converter-current-marker"></div>' : '';
-    grid.innerHTML = currentMarker + activeClocks.map(clock => {
+    const dayHeader = `
+        <div class="converter-day-header" aria-label="Selected converter day">
+            <div class="converter-day-spacer">Day</div>
+            <div class="converter-day-track">
+                <span>${formatConverterDayLabel(dayStart)}</span>
+            </div>
+        </div>
+    `;
+
+    grid.innerHTML = currentMarker + dayHeader + activeClocks.map(clock => {
         const current = timePartsForZone(clock.timezone, now);
         const dayLabel = new Intl.DateTimeFormat('en-US', {
             timeZone: clock.timezone,
@@ -539,12 +579,21 @@ function renderTimeConverter() {
         }).format(now);
         const cells = offsets.map((offset, index) => {
             const point = new Date(dayStart.getTime() + offset * 60 * 60 * 1000);
+            const previousPoint = index > 0 ? new Date(dayStart.getTime() + (offset - 1) * 60 * 60 * 1000) : null;
             const hour = getZonedHour(clock.timezone, point);
+            const previousHour = previousPoint ? getZonedHour(clock.timezone, previousPoint) : null;
+            const crossesIntoNewDay = previousPoint
+                && previousHour === 23
+                && hour === 0
+                && getZonedDateKey(clock.timezone, previousPoint) !== getZonedDateKey(clock.timezone, point);
             const phase = getTimePhase(hour);
             const isNow = index === nowIndex;
             const label = hour % 12 || 12;
             const ampm = hour < 12 ? 'am' : 'pm';
-            return `<button class="converter-hour ${phase} ${isNow ? 'now' : ''}" data-hour-index="${index}" type="button" aria-label="${label}${ampm}${isNow ? ', current time' : ''}"><b>${label}</b><small>${ampm}</small></button>`;
+            const midnightLabel = crossesIntoNewDay
+                ? `<span class="converter-midnight-label">${formatZonedDayLabel(clock.timezone, point)}</span>`
+                : '';
+            return `<button class="converter-hour ${phase} ${isNow ? 'now' : ''} ${crossesIntoNewDay ? 'day-break' : ''}" data-hour-index="${index}" type="button" aria-label="${label}${ampm}${crossesIntoNewDay ? `, ${formatZonedDayLabel(clock.timezone, point)}` : ''}${isNow ? ', current time' : ''}">${midnightLabel}<b>${label}</b><small>${ampm}</small></button>`;
         }).join('');
 
         return `
