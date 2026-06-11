@@ -6,7 +6,7 @@ let activeClocks = [
     { timezone: 'Australia/Sydney', name: 'Sydney' }
 ];
 
-let use24HourClock = localStorage.getItem('use24HourClock') !== 'false';
+let use24HourClock = false;
 let selectedConverterIndex = Number(localStorage.getItem('selectedConverterIndex') || 8);
 let selectedConverterDate = localStorage.getItem('selectedConverterDate') || getDateKey(new Date());
 const localTodayKey = getDateKey(new Date());
@@ -474,24 +474,6 @@ function createClockElement(timezone, cityName, options = {}) {
     utilityBtn.title = 'Clock controls';
     clockDiv.appendChild(utilityBtn);
 
-    const formatToggle = document.createElement('div');
-    formatToggle.className = 'format-toggle';
-    formatToggle.innerHTML = `
-        <button class="format-btn ${use24HourClock ? '' : 'active'}" data-format="12">12h</button>
-        <button class="format-btn ${use24HourClock ? 'active' : ''}" data-format="24">24h</button>
-    `;
-    formatToggle.addEventListener('click', (event) => {
-        const button = event.target.closest('.format-btn');
-        if (!button) return;
-        use24HourClock = button.dataset.format === '24';
-        localStorage.setItem('use24HourClock', use24HourClock);
-        document.querySelectorAll('.format-btn').forEach(btn => {
-            btn.classList.toggle('active', (btn.dataset.format === '24') === use24HourClock);
-        });
-        updateClocks();
-    });
-    clockDiv.appendChild(formatToggle);
-
     // Add background icon element
     const bgIcon = document.createElement('div');
     bgIcon.className = 'clock-background';
@@ -536,12 +518,27 @@ function createClockElement(timezone, cityName, options = {}) {
 
     // Create analog clock
     const analogClock = document.createElement('div');
-    analogClock.className = 'analog-clock';
+    analogClock.className = 'analog-clock classic-clock-face';
 
-    // Add clock markers (hour marks)
-    for (let i = 1; i <= 12; i++) {
+    const analogInfo = document.createElement('div');
+    analogInfo.className = 'analog-info-wrap';
+    analogInfo.innerHTML = '<div class="info analog-date"></div><div class="info analog-day"></div>';
+    analogClock.appendChild(analogInfo);
+
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    analogClock.appendChild(dot);
+
+    const numerals = document.createElement('div');
+    numerals.className = 'clock-numerals';
+    numerals.innerHTML = '<span class="h3">3</span><span class="h6">6</span><span class="h9">9</span><span class="h12">12</span>';
+    analogClock.appendChild(numerals);
+
+    // Add 60 dial lines around the face. Every fifth line is emphasized.
+    for (let i = 0; i < 60; i++) {
         const marker = document.createElement('div');
-        marker.className = i % 3 === 0 ? 'clock-marker main' : 'clock-marker';
+        marker.className = i % 5 === 0 ? 'diallines major' : 'diallines';
+        marker.style.transform = `rotate(${6 * i}deg)`;
         analogClock.appendChild(marker);
     }
 
@@ -648,39 +645,14 @@ function calculateTimeDifference(timezone) {
 }
 
 // Update all clocks
-function ensureFlipClockMarkup(timeElement, periodDisplay) {
-    if (!timeElement.querySelector('.flip-clock.hour')) {
-        timeElement.innerHTML = `
-            <span class="flip-period"></span>
-            <span class="flip-clock down hour"><span class="digital front"></span><span class="digital back"></span></span>
-            <span class="flip-clock down minute"><span class="digital front"></span><span class="digital back"></span></span>
-        `;
-    }
-
-    timeElement.querySelector('.flip-period').textContent = periodDisplay || (use24HourClock ? '24H' : '');
-}
-
-function flipClockUnit(unitElement, nextValue) {
-    const formattedNumber = String(nextValue).padStart(2, '0');
-    const front = unitElement.querySelector('.front');
-    const back = unitElement.querySelector('.back');
-    const currentNumber = front.dataset.number;
-
-    if (!currentNumber) {
-        front.dataset.number = formattedNumber;
-        back.dataset.number = formattedNumber;
-        return;
-    }
-
-    if (currentNumber === formattedNumber || unitElement.classList.contains('go')) return;
-
-    back.dataset.number = formattedNumber;
-    unitElement.classList.add('go');
-
-    setTimeout(() => {
-        unitElement.classList.remove('go');
-        front.dataset.number = formattedNumber;
-    }, 600);
+function renderDigitalClock(timeElement, hourDisplay, minuteDisplay, periodDisplay) {
+    const period = periodDisplay ? periodDisplay.toLowerCase() : '';
+    timeElement.innerHTML = `
+        <span class="digital-clock-inline" aria-label="${hourDisplay}:${minuteDisplay}${period ? ` ${period}` : ''}">
+            <span class="digital-clock-main">${hourDisplay}:${minuteDisplay}</span>
+            ${period ? `<span class="digital-clock-period">${period}</span>` : ''}
+        </span>
+    `;
 }
 
 function timePartsForZone(timezone, date = new Date()) {
@@ -1180,12 +1152,14 @@ function updateClocks() {
         const monthDisplay = datePartsForDisplay.find(part => part.type === 'month')?.value || '';
         const dayDisplay = datePartsForDisplay.find(part => part.type === 'day')?.value || '';
 
-        // Update the digital flip clock display
+        // Update the digital clock display as one inline phrase, e.g. 08:50 am
         const timeElement = clockElement.querySelector('.time');
-        ensureFlipClockMarkup(timeElement, periodDisplay);
-        flipClockUnit(timeElement.querySelector('.flip-clock.hour'), hourDisplay);
-        flipClockUnit(timeElement.querySelector('.flip-clock.minute'), minuteDisplay);
+        renderDigitalClock(timeElement, hourDisplay, minuteDisplay, periodDisplay);
         clockElement.querySelector('.date').innerHTML = `<strong>${weekdayDisplay},</strong><span>${dayDisplay} ${monthDisplay}</span>`;
+        const analogDate = clockElement.querySelector('.analog-date');
+        const analogDay = clockElement.querySelector('.analog-day');
+        if (analogDate) analogDate.textContent = `${String(dayDisplay).padStart(2, '0')}/${monthDisplay.toUpperCase()}`;
+        if (analogDay) analogDay.textContent = new Intl.DateTimeFormat('en-US', { timeZone: clock.timezone, weekday: 'long' }).format(now);
         clockElement.querySelector('.clock-meta-row').innerHTML = `<span>${weekdayDisplay}, ${dayDisplay} ${monthDisplay}</span><b>${getWeatherFromTimezone(clock.timezone)}</b>`;
         const ghostHour = hourDisplay;
         const ghostMinuteOne = String((Number(minuteDisplay) + 1) % 60).padStart(2, '0');
@@ -1476,6 +1450,8 @@ function loadClockPreferences() {
 
 // Initialize the application
 function initializeApp() {
+    localStorage.setItem('use24HourClock', 'false');
+    use24HourClock = false;
     // Load saved preferences
     loadClockPreferences();
 
